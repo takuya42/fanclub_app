@@ -83,4 +83,5 @@ class DefaultFirebaseOptions {
     authDomain: 'fanclub-app-2025.firebaseapp.com',
     storageBucket: 'fanclub-app-2025.firebasestorage.app',
   );
+
 }
