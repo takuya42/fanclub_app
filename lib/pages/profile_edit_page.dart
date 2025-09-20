@@ -9,7 +9,7 @@ class ProfileEditPage extends StatefulWidget {
 
 class _ProfileEditPageState extends State<ProfileEditPage> {
   final _nameController = TextEditingController();
-  final _bioController  = TextEditingController();
+  final _bioController = TextEditingController();
   bool _saving = false;
 
   @override
@@ -30,47 +30,77 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     Navigator.pop(context);
   }
 
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      filled: true,
+      fillColor: Colors.grey[900],
+      labelStyle: const TextStyle(color: Colors.white70),
+      border: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.grey.shade700),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.grey.shade700),
+      ),
+      focusedBorder: const OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.white),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('プロフィール編集')),
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text('プロフィール編集'),
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // 将来プロフィール画像を追加したい場合の例
+              CircleAvatar(
+                radius: 40,
+                backgroundColor: Colors.grey[800],
+                child: const Icon(Icons.person, size: 40, color: Colors.white70),
+              ),
+              const SizedBox(height: 24),
 
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _nameController,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: '表示名',
-                border: OutlineInputBorder(),
+              TextField(
+                controller: _nameController,
+                style: const TextStyle(color: Colors.white),
+                textInputAction: TextInputAction.next,
+                decoration: _inputDecoration('表示名'),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _bioController,
-              maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: '自己紹介',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 12),
+
+              TextField(
+                controller: _bioController,
+                style: const TextStyle(color: Colors.white),
+                maxLines: 4,
+                decoration: _inputDecoration('自己紹介'),
               ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _saving ? null : _save,
-                icon: _saving
-                    ? const SizedBox(
-                  width: 16, height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-                    : const Icon(Icons.save),
-                label: Text(_saving ? '保存中…' : '保存する'),
+              const SizedBox(height: 16),
+
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _saving ? null : _save,
+                  icon: _saving
+                      ? const SizedBox(
+                    width: 16, height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                      : const Icon(Icons.save),
+                  label: Text(_saving ? '保存中…' : '保存する'),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
