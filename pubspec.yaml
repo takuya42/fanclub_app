@@ -27,6 +27,8 @@ dependencies:
   sign_in_with_apple: ^6.1.0
   crypto: ^3.0.0
   kf_drawer: ^2.0.0
+  firebase_messaging: ^15.1.2
+  flutter_local_notifications: ^17.0.0
 
 dev_dependencies:
   flutter_test:
