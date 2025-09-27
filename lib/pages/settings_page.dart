@@ -1,7 +1,11 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../providers/theme_provider.dart';
+import '../providers/notification_provider.dart'; // 通知ON/OFFスイッチ用（前に作成したプロバイダ）
+import '../services/notification_service.dart';   // ローカル通知（シミュレータ確認用）
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -10,6 +14,9 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
     final isDark = mode == ThemeMode.dark;
+
+    // 通知ON/OFFの現在値を購読
+    final notificationsEnabled = ref.watch(notificationProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -27,7 +34,7 @@ class SettingsPage extends ConsumerWidget {
             leading: const Icon(Icons.person),
             title: const Text('プロフィール編集'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/profileEdit'), // ← ルーターへ
+            onTap: () => context.push('/profileEdit'),
           ),
           ListTile(
             leading: const Icon(Icons.lock),
@@ -38,10 +45,10 @@ class SettingsPage extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.mail),
             title: const Text('メールアドレス変更'),
-            onTap: () {
-              // TODO: 遷移
-            },
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/changeemail'),
           ),
+
           const Divider(),
           const Padding(
             padding: EdgeInsets.all(16.0),
@@ -61,14 +68,40 @@ class SettingsPage extends ConsumerWidget {
             onTap: () =>
                 ref.read(themeModeProvider.notifier).setMode(ThemeMode.system),
           ),
+
+          // 通知ON/OFF（FCMトピック購読/解除 + 端末権限リクエスト）
           SwitchListTile(
             secondary: const Icon(Icons.notifications_active),
             title: const Text('通知'),
-            value: false,
-            onChanged: (value) {
-              // TODO: 保存・反映（後で実装）
+            value: notificationsEnabled,
+            onChanged: (value) async {
+              await ref
+                  .read(notificationProvider.notifier)
+                  .setEnabled(value, context);
             },
           ),
+
+          // ====== ここが “iOSシミュレータ用の通知UIテスト” ボタン ======
+          if (Platform.isIOS)
+            ListTile(
+              leading: const Icon(Icons.notifications_none),
+              title: const Text('通知テスト（iOSシミュレータ）'),
+              subtitle: const Text('ローカル通知でバナーUIだけ確認します'),
+              onTap: () async {
+                await NotificationService.instance.show(
+                  'ローカル通知テスト',
+                  'これはiOSシミュレータ用のバナーです',
+                  forceIOS: true, // これがポイント！
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('テスト通知を表示しました')),
+                  );
+                }
+              },
+            ),
+          // ==========================================================
+
           const Divider(),
           const Padding(
             padding: EdgeInsets.all(16),
@@ -77,23 +110,17 @@ class SettingsPage extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.forum_rounded),
             title: const Text('お問い合わせ'),
-            onTap: () {
-              // TODO: 遷移
-            },
+            onTap: () {},
           ),
           ListTile(
             leading: const Icon(Icons.star_rate_outlined),
             title: const Text('レビューを書く'),
-            onTap: () {
-              // TODO: ストアリンクに遷移
-            },
+            onTap: () {},
           ),
           ListTile(
             leading: const Icon(Icons.description_outlined),
             title: const Text('利用規約'),
-            onTap: () {
-              // TODO: 規約ページへ遷移
-            },
+            onTap: () {},
           ),
         ],
       ),
