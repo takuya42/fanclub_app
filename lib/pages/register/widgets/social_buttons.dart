@@ -1,102 +1,135 @@
-// lib/pages/widgets/social_buttons.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:fanclub_app/pages/auth/google_auth.dart';
 import 'package:fanclub_app/pages/auth/apple_auth.dart';
+import 'package:fanclub_app/repositories/user_repository.dart';
 
 class SocialButtons extends ConsumerWidget {
   const SocialButtons({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final List<Map<String, String>> services = [
-      {
-        'icon': 'https://hackaday.com/wp-content/uploads/2016/08/google-g-logo.png',
-        'label': 'Google',
-      },
-      {
-        'icon': 'https://img.icons8.com/?size=100&id=30840&format=png&color=000000',
-        'label': 'Apple',
-      },
-    ];
 
+    // --------------------
+    // Google ログイン
+    // --------------------
     Future<void> _handleGoogle() async {
       try {
         final cred = await GoogleAuth.signInWithGoogle();
         final user = cred.user;
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('ようこそ、${user?.displayName ?? user?.email ?? 'ゲスト'}さん')),
-          );
-          context.go('/home');
+
+        if (user == null) {
+          throw Exception('Google user is null');
         }
+
+        // アカウント作成（初回のみ）
+        await UserRepository.createIfNeeded(user, 'google');
+
+        if (!context.mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ようこそ、${user.displayName ?? 'ゲスト'}さん')),
+        );
+        context.go('/home');
       } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Googleログイン失敗: $e')),
-          );
-        }
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Googleログイン失敗: $e')),
+        );
       }
     }
 
+    // --------------------
+    // Apple ログイン（審査重要）
+    // --------------------
     Future<void> _handleApple() async {
       try {
         final cred = await AppleAuth.signInWithApple();
         final user = cred.user;
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('ようこそ、${user?.displayName ?? user?.email ?? 'ゲスト'}さん')),
-          );
-          context.go('/home');
+
+        if (user == null) {
+          throw Exception('Apple user is null');
         }
+
+        // 🔴 最重要：アカウントID作成（existsチェック済）
+        await UserRepository.createIfNeeded(user, 'apple');
+
+        if (!context.mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appleログイン成功')),
+        );
+        context.go('/home');
       } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Appleログイン失敗: $e')),
-          );
-        }
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Appleログイン失敗: $e')),
+        );
       }
     }
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(services.length, (i) {
-        final service = services[i];
-        return Padding(
+    return Column(
+      children: [
+        // Google
+        Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(
-            children: [
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  shape: const CircleBorder(),
-                  padding: const EdgeInsets.all(10),
-                ),
-                onPressed: () async {
-                  if (i == 0) {
-                    await _handleGoogle();
-                  } else {
-                    await _handleApple();
-                  }
-                },
-                child: Image.network(
-                  service['icon']!,
-                  width: 40,
-                  height: 40,
-                  errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.error, color: Colors.red, size: 40),
-                ),
+          child: ElevatedButton(
+            onPressed: _handleGoogle,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black87,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
               ),
-              const SizedBox(height: 6),
-              Text(
-                service['label']!,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-              ),
-            ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.g_mobiledata, size: 28),
+                SizedBox(width: 12),
+                Text(
+                  'Googleでログイン',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
           ),
-        );
-      }),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Apple
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: ElevatedButton(
+            onPressed: _handleApple,
+            style: ElevatedButton.styleFrom(
+              side: const BorderSide(color: Colors.white, width: 2),
+              foregroundColor: Colors.white,
+              backgroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.apple, size: 26),
+                SizedBox(width: 12),
+                Text(
+                  'Appleでログイン',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

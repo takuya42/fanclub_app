@@ -1,7 +1,7 @@
 // lib/pages/register/widgets/register_form.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:fanclub_app/providers/register_provider.dart';
 
 class RegisterForm extends ConsumerWidget {
@@ -9,28 +9,21 @@ class RegisterForm extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final emailController    = ref.watch(emailControllerProvider);
-    final passwordController = ref.watch(passwordControllerProvider);
-    final obscure            = ref.watch(obscurePasswordProvider);
-    final canSubmit          = ref.watch(isFormValidProvider);
+    final emailController       = ref.watch(emailControllerProvider);
+    final passwordController    = ref.watch(passwordControllerProvider);
+    final confirmController     = ref.watch(confirmPasswordControllerProvider);
 
-    Future<void> _create() async {
-      try {
-        final ok = await ref.read(registerActionProvider)();
-        if (ok && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('アカウントを作成しました。ログイン済みです。')),
-          );
-          context.go('/home');
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-          );
-        }
-      }
-    }
+    final obscurePass           = ref.watch(obscurePasswordProvider);
+    final obscureConfirm        = ref.watch(obscureConfirmPasswordProvider);
+
+    final email                 = ref.watch(emailTextProvider);
+    final pass                  = ref.watch(passwordTextProvider);
+    final confirm               = ref.watch(confirmPasswordTextProvider);
+
+    final canSubmit             = ref.watch(isFormValidProvider);
+
+    // パスワード一致チェック
+    final bool isMatch = pass.isNotEmpty && confirm.isNotEmpty && pass == confirm;
 
     InputDecoration _decoration(String hint) => InputDecoration(
       hintText: hint,
@@ -45,64 +38,80 @@ class RegisterForm extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            'メールアドレス',
-            style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-          ),
+        /// メール
+        const Text(
+          'メールアドレス',
+          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 5),
         TextField(
           controller: emailController,
           keyboardType: TextInputType.emailAddress,
           style: const TextStyle(color: Colors.white),
-          decoration: _decoration('fanclub@email.com'),
-          onChanged: (v) => ref.read(emailTextProvider.notifier).state = v, // ★重要
+          decoration: _decoration('example@mail.com'),
+          onChanged: (v) => ref.read(emailTextProvider.notifier).state = v,
         ),
-        const SizedBox(height: 15),
+        const SizedBox(height: 20),
 
-        const Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            'パスワード（6文字以上）',
-            style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-          ),
+        /// パスワード
+        const Text(
+          'パスワード（6文字以上）',
+          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 5),
         TextField(
           controller: passwordController,
-          obscureText: obscure,
+          obscureText: obscurePass,
           style: const TextStyle(color: Colors.white),
           decoration: _decoration('********').copyWith(
             suffixIcon: IconButton(
-              onPressed: () => ref.read(obscurePasswordProvider.notifier).state = !obscure,
-              icon: Icon(obscure ? Icons.visibility_off : Icons.visibility, color: Colors.white70),
+              onPressed: () => ref.read(obscurePasswordProvider.notifier).state = !obscurePass,
+              icon: Icon(
+                obscurePass ? Icons.visibility_off : Icons.visibility,
+                color: Colors.white70,
+              ),
             ),
           ),
-          onChanged: (v) => ref.read(passwordTextProvider.notifier).state = v, // ★重要
+          onChanged: (v) => ref.read(passwordTextProvider.notifier).state = v,
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
 
-
-
-        const SizedBox(height: 8),
-
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: canSubmit ? _create : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: canSubmit ? Colors.blue : Colors.blue.withOpacity(0.45),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              disabledBackgroundColor: Colors.blue.withOpacity(0.35), // 無効でも見える
-              disabledForegroundColor: Colors.white70,
+        /// パスワード確認
+        const Text(
+          'パスワード確認',
+          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 5),
+        TextField(
+          controller: confirmController,
+          obscureText: obscureConfirm,
+          style: const TextStyle(color: Colors.white),
+          decoration: _decoration('********').copyWith(
+            suffixIcon: IconButton(
+              onPressed: () => ref.read(obscureConfirmPasswordProvider.notifier).state = !obscureConfirm,
+              icon: Icon(
+                obscureConfirm ? Icons.visibility_off : Icons.visibility,
+                color: Colors.white70,
+              ),
             ),
-            child: const Text('アカウント作成', style: TextStyle(fontSize: 18)),
           ),
+          onChanged: (v) => ref.read(confirmPasswordTextProvider.notifier).state = v,
         ),
+
+        const SizedBox(height: 10),
+
+        /// 🔥 一致 / 不一致 メッセージ
+        if (pass.isNotEmpty && confirm.isNotEmpty)
+          Text(
+            isMatch ? '✔ パスワードが一致しています' : '✘ パスワードが一致していません',
+            style: TextStyle(
+              color: isMatch ? Colors.greenAccent : Colors.redAccent,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+        const SizedBox(height: 20),
       ],
     );
   }

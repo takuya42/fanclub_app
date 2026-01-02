@@ -1,3 +1,4 @@
+// lib/widgets/fcm_debug_button.dart
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -9,30 +10,43 @@ class FcmDebugButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
-      child: Text(Platform.isIOS
-          ? '（iOS）ローカル通知テスト'
-          : '（Android）group_demo を購読'),
+      child: Text(
+        Platform.isIOS ? '（iOS）ローカル通知テスト' : '（Android）group_demo を購読',
+      ),
       onPressed: () async {
-        if (Platform.isIOS) {
-          // ★ シミュレータで即バナーを表示
-          await NotificationService.instance.show(
-            'ローカル通知テスト',
-            'テスト',
-            forceIOS: true,
-          );
-        } else {
-          // 従来の購読 → コンソールからトピック送信で前面バナー
-          await FirebaseMessaging.instance.requestPermission(
-            alert: true, badge: true, sound: true,
-          );
-          await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-            alert: true, badge: true, sound: true,
-          );
-          await FirebaseMessaging.instance.subscribeToTopic('group_demo');
-          final token = await FirebaseMessaging.instance.getToken();
+        try {
+          if (Platform.isIOS) {
+            // iOSシミュレータ/実機の“前面でも”バナーUIテスト
+            await NotificationService.instance.show(
+              'ローカル通知テスト',
+              'これはiOSバナーのテストです',
+            );
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('ローカル通知を表示しました')),
+              );
+            }
+          } else {
+            // Android: 権限→トピック購読（前面受信は main.dart の onMessage + ローカル通知で表示）
+            await FirebaseMessaging.instance.requestPermission(
+              alert: true, badge: true, sound: true,
+            );
+            await FirebaseMessaging.instance.subscribeToTopic('group_demo');
+
+            final token = await FirebaseMessaging.instance.getToken();
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('topic: group_demo を購読しました。\n'
+                      'token: ${token != null && token.length > 12 ? token.substring(0, 12) : token}...'),
+                ),
+              );
+            }
+          }
+        } catch (e) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('購読OK。token: ${token?.substring(0, 12)}...')),
+              SnackBar(content: Text('エラー: $e')),
             );
           }
         }

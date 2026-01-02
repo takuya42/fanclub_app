@@ -25,11 +25,15 @@ class BioTab extends StatelessWidget {
             width: double.infinity,
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 60),
 
-          const Text(
-            'ここに紹介文が入ります。\nこのように複数行にわたって文章を入れることができます。',
-            style: TextStyle(fontSize: 16),
+       const Center(
+            child: Text(
+            '',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontSize: 16),
+            ),
           ),
         ],
       ),

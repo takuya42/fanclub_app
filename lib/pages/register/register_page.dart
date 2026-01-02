@@ -1,26 +1,71 @@
-// lib/pages/register_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
+import 'package:url_launcher/url_launcher.dart';
+import '../../providers/register_provider.dart';
 import 'widgets/register_form.dart';
 import 'widgets/social_buttons.dart';
 import 'widgets/appbar_clipper.dart';
 
-class RegisterPage extends ConsumerWidget {
+class RegisterPage extends ConsumerStatefulWidget {
   const RegisterPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RegisterPage> createState() => _RegisterPageState();
+}
+
+class _RegisterPageState extends ConsumerState<RegisterPage> {
+  bool agreeToTerms = false;
+  bool isLoading = false;
+
+  /// 🔗 Notion 利用規約リンク
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('URLを開けませんでした: $url')),
+        );
+      }
+    }
+  }
+
+  /// 📨 新規登録処理
+  Future<void> _register() async {
+    setState(() => isLoading = true);
+
+    try {
+      final ok = await ref.read(registerActionProvider)();
+      if (ok && mounted) {
+        context.go('/home');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst("Exception: ", ""))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canSubmit = ref.watch(isFormValidProvider);
+
     return Scaffold(
       backgroundColor: Colors.black,
+
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(120),
         child: ClipPath(
           clipper: const CustomAppBarClipper(),
           child: AppBar(
             title: const Text(
-              'Sign Up',
+              '新規登録',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             leading: IconButton(
@@ -29,73 +74,104 @@ class RegisterPage extends ConsumerWidget {
             ),
             backgroundColor: Colors.blue,
             elevation: 0,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.help_outline, size: 28),
-                onPressed: () {},
-              ),
-            ],
           ),
         ),
       ),
+
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                16,
-                16,
-                16 + MediaQuery.of(context).viewInsets.bottom,
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            16 + MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 30),
+
+              /// ✉️ メール／パスワード入力フォーム
+              const RegisterForm(),
+              const SizedBox(height: 20),
+
+              /// 📘 利用規約チェック
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Checkbox(
+                    value: agreeToTerms,
+                    onChanged: (v) => setState(() => agreeToTerms = v ?? false),
+                    activeColor: Colors.redAccent,
+                  ),
+                  Flexible(
+                    child: Wrap(
+                      children: [
+                        const Text(
+                          '利用規約に同意します',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        TextButton(
+                          onPressed: () => _openUrl(
+                            "https://www.notion.so/flutter-family/StagePlus-2c2b5c1f2cef807884b7c319a93f9633",
+                          ),
+                          child: const Text(
+                            '（利用規約を読む）',
+                            style: TextStyle(
+                              color: Colors.redAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(height: 30),
 
-                    // ① メール登録フォームを先に
-                    RegisterForm(),
-                    SizedBox(height: 40),
+              const SizedBox(height: 30),
 
-                    // ② 区切り
-                    Text(
-                      'または',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+              /// 🔥 Google ログインボタン
+              const SocialButtons(),
+              const SizedBox(height: 32),
+
+              /// 🆕 新規登録ボタン（ローディング付き）
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: ElevatedButton(
+                  onPressed: (agreeToTerms && canSubmit && !isLoading)
+                      ? _register
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: (agreeToTerms && canSubmit)
+                        ? Colors.redAccent
+                        : Colors.grey.shade700,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
                     ),
-                    SizedBox(height: 10),
-                    Divider(
-                        color: Colors.white,
-                        thickness: 1,
-                        indent: 20,
-                        endIndent: 20),
-                    SizedBox(height: 30),
-
-                    // ③ SNSログインを下に
-                    Text(
-                      '各種サービスIDでログイン',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                    height: 22,
+                    width: 22,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 3,
                     ),
-                    SizedBox(height: 30),
-                    SocialButtons(),
-
-                    SizedBox(height: 32),
-                  ],
+                  )
+                      : const Text(
+                    '新規登録',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
-            );
-          },
+            ],
+          ),
         ),
       ),
     );
