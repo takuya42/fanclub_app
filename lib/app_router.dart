@@ -1,59 +1,129 @@
-import 'package:fanclub_app/pages/mypage.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'widgets/app_drawer.dart';
+
+// ===== Pages =====
 import 'login_page.dart';
 import 'home_page.dart';
 import 'layouts/bottom_nav_layout.dart';
 import 'pages/settings_page.dart';
 import 'pages/register/register_page.dart';
-import 'pages/profile_edit_page.dart';
 import 'pages/change_password_page.dart';
 import 'pages/change_email_page.dart';
+import 'pages/forgot_password_page.dart';
+import 'pages/webview/contact_webview_page.dart';
+import 'pages/mypage.dart';
+import 'pages/membership_page.dart';
+import 'pages/goods_history_page.dart';
+import 'pages/cart_page.dart';
+import 'pages/payment_page.dart';
+import 'pages/purchase_complete_page.dart';
+import 'pages/band_list_page.dart';
+import 'pages/schedule/schedule_page.dart';
+import 'pages/splash_page.dart';
+import 'pages/goods_list_page.dart';
 
-// ★ 追加
-import 'pages/auth/session.dart'; // ← ログイン状態(ChangeNotifier)
-import 'pages/news/news_gate_page.dart' show NewsGatePage; // ← 新規ゲートページ
-// 既存
-import 'pages/news/news_list_page.dart' show NewsListPage;
-import 'pages/news/news_detail_page.dart' show NewsDetailPage;
+// Terms
+import 'pages/terms_page.dart';
+import 'pages/privacy_page.dart';
 
+// Auth
+import 'pages/auth/session.dart';
+
+// News
+import 'pages/news/news_gate_page.dart';
+import 'pages/news/news_list_page.dart';
+import 'pages/news/news_detail_page.dart';
+
+/// ===============================
+/// GoRouter
+/// ===============================
 final GoRouter appRouter = GoRouter(
-  initialLocation: '/home',
-
-  // ★ 追加：session の変化でリダイレクト再評価
+  initialLocation: '/splash',
   refreshListenable: session,
 
-  // ★ 追加：未ログイン→Gate、ログイン済み→NewsList
+  /// 🔴 リダイレクト（重要）
   redirect: (context, state) {
-    final loggedIn = session.isLoggedIn;
     final loc = state.matchedLocation;
+
+    // Splash は必ず許可
+    if (loc == '/splash') return null;
+
+    final loggedIn = session.isLoggedIn;
 
     final isGate = loc == '/news-gate';
     final isNews = loc.startsWith('/newslist');
-    final isAuth = loc == '/login' || loc == '/register';
+    final isAuth =
+        loc == '/login' || loc == '/register' || loc == '/forgotPassword';
 
-    // 未ログインでニュースへ来た → ゲートへ
     if (!loggedIn && isNews) return '/news-gate';
-
-    // ログイン済みでゲート or 認証ページに居る → ニュースへ
-    if (loggedIn && (isGate || isAuth)) return '/newslist';
+    if (loggedIn && (isGate || isAuth)) return '/home';
 
     return null;
   },
 
   errorBuilder: (context, state) => Scaffold(
+    backgroundColor: Colors.black,
     appBar: AppBar(title: const Text('ページが見つかりません')),
-    body: Center(child: Text(state.error?.toString() ?? '404')),
+    body: Center(
+      child: Text(
+        state.error?.toString() ?? '404 Not Found',
+        style: const TextStyle(color: Colors.white),
+      ),
+    ),
   ),
 
   routes: [
-    GoRoute(path: '/login', name: 'login', builder: (c, s) => const LoginPage()),
-    GoRoute(path: '/register', name: 'register', builder: (c, s) => const RegisterPage()),
+    // ===============================
+    // Splash
+    // ===============================
+    GoRoute(
+      path: '/splash',
+      name: 'splash',
+      builder: (context, state) => const SplashPage(),
+    ),
 
-    // ▼ タブ付き領域
+    // ===============================
+    // Auth
+    // ===============================
+    GoRoute(
+      path: '/login',
+      name: 'login',
+      builder: (context, state) => const LoginPage(),
+    ),
+    GoRoute(
+      path: '/register',
+      name: 'register',
+      builder: (context, state) => const RegisterPage(),
+    ),
+    GoRoute(
+      path: '/forgotPassword',
+      name: 'forgot_password',
+      builder: (context, state) {
+        final email = state.extra as String?;
+        return ForgotPasswordPage(initialEmail: email);
+      },
+    ),
+
+    // ===============================
+    // Terms / Privacy
+    // ===============================
+    GoRoute(
+      path: '/terms',
+      name: 'terms',
+      builder: (context, state) => const TermsPage(),
+    ),
+    GoRoute(
+      path: '/privacy',
+      name: 'privacy',
+      builder: (context, state) => const PrivacyPage(),
+    ),
+
+    // ===============================
+    // BottomNavigation
+    // ===============================
     ShellRoute(
-      builder: (context, state, child) => BottomNavLayout(child: child),
+      builder: (context, state, child) =>
+          BottomNavLayout(child: child),
       routes: [
         GoRoute(
           path: '/home',
@@ -63,15 +133,18 @@ final GoRouter appRouter = GoRouter(
             return HomePage(email: email);
           },
         ),
+        GoRoute(
+          path: '/mypage',
+          name: 'mypage',
+          builder: (context, state) => const MyPage(),
+        ),
 
-        // ★ 追加：未ログイン時に表示するゲート
+        // News
         GoRoute(
           path: '/news-gate',
           name: 'news_gate',
           builder: (context, state) => const NewsGatePage(),
         ),
-
-        // 既存：ログイン済み専用のお知らせ一覧
         GoRoute(
           path: '/newslist',
           name: 'newslist',
@@ -81,7 +154,7 @@ final GoRouter appRouter = GoRouter(
               path: ':id',
               name: 'news_detail',
               builder: (context, state) {
-                final id = state.pathParameters['id'] ?? '';
+                final id = state.pathParameters['id']!;
                 final title = state.extra as String?;
                 return NewsDetailPage(id: id, title: title);
               },
@@ -89,14 +162,71 @@ final GoRouter appRouter = GoRouter(
           ],
         ),
 
-        GoRoute(path: '/settings', name: 'settings', builder: (c, s) => const SettingsPage()),
-        GoRoute(path: '/mypage', name: 'mypage', builder: (c, s) => const MyPage()),
+        GoRoute(
+          path: '/settings',
+          name: 'settings',
+          builder: (context, state) => const SettingsPage(),
+        ),
+        GoRoute(
+          path: '/membership',
+          name: 'membership',
+          builder: (context, state) => const MembershipPage(),
+        ),
+        GoRoute(
+          path: '/bands',
+          name: 'bands',
+          builder: (context, state) => const BandListPage(),
+        ),
+        GoRoute(
+          path: '/schedule',
+          name: 'schedule',
+          builder: (context, state) => const SchedulePage(),
+        ),
       ],
     ),
 
-    // ▼ タブ外
-    GoRoute(path: '/profileEdit', name: 'profile_edit', builder: (c, s) => const ProfileEditPage()),
-    GoRoute(path: '/changePassword', builder: (c, s) => const ChangePasswordPage()),
-    GoRoute(path: '/changeEmail', builder: (c, s) => const ChangeEmailPage()),
+    // ===============================
+    // Outside Tabs
+    // ===============================
+    GoRoute(
+      path: '/shop',
+      name: 'shop',
+      builder: (context, state) => const GoodsListPage(),
+    ),
+    GoRoute(
+      path: '/purchase_history',
+      name: 'purchase_history',
+      builder: (context, state) => const GoodsHistoryPage(),
+    ),
+    GoRoute(
+      path: '/cart',
+      name: 'cart',
+      builder: (context, state) => const CartPage(),
+    ),
+    GoRoute(
+      path: '/payment',
+      name: 'payment',
+      builder: (context, state) => const PaymentPage(),
+    ),
+    GoRoute(
+      path: '/purchase-complete',
+      name: 'purchase_complete',
+      builder: (context, state) => const PurchaseCompletePage(),
+    ),
+    GoRoute(
+      path: '/changepassword',
+      name: 'change_password',
+      builder: (context, state) => const ChangePasswordPage(),
+    ),
+    GoRoute(
+      path: '/changeemail',
+      name: 'change_email',
+      builder: (context, state) => const ChangeEmailPage(),
+    ),
+    GoRoute(
+      path: '/contact',
+      name: 'contact',
+      builder: (context, state) => const ContactWebViewPage(),
+    ),
   ],
 );

@@ -1,82 +1,125 @@
+// lib/services/notification_service.dart
 import 'dart:io' show Platform;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
+/// ローカル通知のユーティリティ（即時/予約の両方対応）
 class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
 
-  final _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+  FlutterLocalNotificationsPlugin();
 
-  static const _channelId = 'fanclub_channel_default';
-  static const _channelName = 'お知らせ';
+  static const AndroidNotificationChannel _androidChannel =
+  AndroidNotificationChannel(
+    'fanclub_default',
+    'Fanclub Notifications',
+    description: 'General notifications for Fanclub app',
+    importance: Importance.high,
+  );
 
-  /// アプリ起動時に1度だけ呼んでください（main.dart など）
+  bool _inited = false;
+
   Future<void> init() async {
-    // Android 初期化
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    if (_inited) return;
 
-    // iOS 初期化（許可ダイアログは別で出すので false）
-    const iosInit = DarwinInitializationSettings(
+    // ===== タイムゾーン初期化（予約通知に必須）=====
+    // 端末タイムゾーンに合わせたい場合は flutter_native_timezone を使って取得してもOK
+    tz.initializeTimeZones();
+    // とりあえず東京固定（必要なら端末のタイムゾーンに差し替え）
+    tz.setLocalLocation(tz.getLocation('Asia/Tokyo'));
+
+    // ===== 初期化 =====
+    const darwinInit = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
-
-    const settings = InitializationSettings(android: androidInit, iOS: iosInit);
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(iOS: darwinInit, android: androidInit);
 
     await _plugin.initialize(
-      settings,
-      onDidReceiveNotificationResponse: (resp) {
-        // 通知タップ時の処理が必要ならここで payload 解析して遷移
-        // final payload = resp.payload;
+      initSettings,
+      onDidReceiveNotificationResponse: (resp) async {
+        // 通知タップ時のハンドリングが必要ならここに遷移処理等を書く
+        // final payload = resp.payload; ...
       },
     );
 
-    // iOS ローカル通知の権限（未許可なら一度だけ出る）
+    // ===== 権限リクエスト（超重要） =====
+    // iOS: ローカル通知でも OS の通知権限が必要
     await _plugin
         .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(alert: true, badge: true, sound: true);
 
-    // Android 8.0+ 通知チャンネル
-    const channel = AndroidNotificationChannel(
-      _channelId,
-      _channelName,
-      description: '前面表示用の通知チャンネル',
-      importance: Importance.defaultImportance,
-    );
-    await _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
+    // Android: チャンネル作成（8.0+ 必須）
+    if (Platform.isAndroid) {
+      await _plugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(_androidChannel);
+    }
+
+    _inited = true;
   }
 
-  /// 前面表示用ローカル通知
-  /// iOSで“UI確認だけ”したい時は forceIOS=true にする（シミュレータ対応）
-  Future<void> show(
-      String title,
-      String body, {
-        String? payload,
-        bool forceIOS = false,
-      }) async {
-    final isAndroid = Platform.isAndroid;
-    final isIosLocal = Platform.isIOS && forceIOS; // これが true の時だけ iOS でも出す
+  NotificationDetails _details() {
+    return const NotificationDetails(
+      iOS: DarwinNotificationDetails(
+        // アプリ前面でもバナー/サウンドを出す
+        presentAlert: true,
+        presentSound: true,
+        presentBadge: true,
+        interruptionLevel: InterruptionLevel.active, // iOS15+
+      ),
+      android: AndroidNotificationDetails(
+        'fanclub_default',
+        'Fanclub Notifications',
+        channelDescription: 'General notifications for Fanclub app',
+        importance: Importance.high,
+        priority: Priority.high,
+        ticker: 'ticker',
+      ),
+    );
+  }
 
-    if (isAndroid || isIosLocal) {
-      final details = NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: '前面表示用の通知チャンネル',
-          priority: Priority.defaultPriority,
-          importance: Importance.defaultImportance,
-          icon: '@mipmap/ic_stat_notification', // 白1色アイコンがあれば推奨
-        ),
-        iOS: const DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      );
-      await _plugin.show(0, title, body, details, payload: payload);
-    }
+  /// 即時表示（前面でもバナーを出す）
+  Future<void> show(String title, String body, {String? payload}) async {
+    if (!_inited) await init();
+    await _plugin.show(0, title, body, _details(), payload: payload);
+  }
+
+  /// 指定時刻にローカル通知を予約（シミュレータでもOK）
+  Future<int> scheduleAt(DateTime when, String title, String body, {String? payload}) async {
+    if (!_inited) await init();
+
+    // 一意なID（簡易）
+    final id = when.millisecondsSinceEpoch % 2147483647;
+
+    await _plugin.zonedSchedule(
+      id,
+      title,
+      body,
+      tz.TZDateTime.from(when, tz.local),
+      _details(),
+      androidAllowWhileIdle: true,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: null, // 繰り返しなし
+      payload: payload,
+    );
+    return id;
+  }
+
+  /// ID指定でキャンセル
+  Future<void> cancel(int id) async {
+    if (!_inited) await init();
+    await _plugin.cancel(id);
+  }
+
+  /// すべてのローカル通知をキャンセル
+  Future<void> cancelAll() async {
+    if (!_inited) await init();
+    await _plugin.cancelAll();
   }
 }

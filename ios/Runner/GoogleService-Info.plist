@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>356943071344-pmvqmmn2jptbeerfc0vuvn3dtndvt88b.apps.googleusercontent.com</string>
+	<string>356943071344-iqp7istum94f8skspiq6h8sk3bv2e8rr.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.356943071344-pmvqmmn2jptbeerfc0vuvn3dtndvt88b</string>
+	<string>com.googleusercontent.apps.356943071344-iqp7istum94f8skspiq6h8sk3bv2e8rr</string>
 	<key>ANDROID_CLIENT_ID</key>
 	<string>356943071344-a77g8ghjtldbq3me68n3itj8rqejgiua.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
@@ -15,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.example.fanclubApp</string>
+	<string>com.kounotakuya.fanclubapp</string>
 	<key>PROJECT_ID</key>
 	<string>fanclub-app-2025</string>
 	<key>STORAGE_BUCKET</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:356943071344:ios:ee671ec867b0a132f24cb5</string>
+	<string>1:356943071344:ios:6951dc1a100225b2f24cb5</string>
 </dict>
 </plist>

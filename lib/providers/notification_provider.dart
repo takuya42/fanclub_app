@@ -1,3 +1,5 @@
+// lib/providers/notification_provider.dart
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -23,7 +25,7 @@ class NotificationController extends StateNotifier<bool> {
     if (saved != null) {
       state = saved;
       if (state) {
-        // 端末権限が許可済みなら念のため再購読
+        // 起動時の購読再適用（失敗しても無視）
         try {
           await FirebaseMessaging.instance.subscribeToTopic(topic);
         } catch (_) {}
@@ -36,46 +38,77 @@ class NotificationController extends StateNotifier<bool> {
     final prefs = await SharedPreferences.getInstance();
     final messaging = FirebaseMessaging.instance;
 
-    if (enable) {
-      // 権限リクエスト（iOS/Android13+）
-      final settings = await messaging.requestPermission(
-        alert: true, badge: true, sound: true,
-      );
+    try {
+      if (enable) {
+        // ✅ 通知権限リクエスト（iOS / Android 13+）
+        final settings = await messaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
 
-      // iOS前面でOSに表示させる（Androidは既にNotificationServiceで出す想定）
-      await messaging.setForegroundNotificationPresentationOptions(
-        alert: true, badge: true, sound: true,
-      );
+        // iOSで前面通知を表示
+        await messaging.setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
 
-      // 許可されなかったとき
-      if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        // 拒否された場合
+        if (settings.authorizationStatus == AuthorizationStatus.denied) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('通知が許可されていません。端末の設定から有効にしてください。')),
+            );
+          }
+          return;
+        }
+
+        // ✅ iOSの場合はAPNsトークンが発行されるまで待機
+        if (Platform.isIOS) {
+          String? token;
+          int retry = 0;
+
+          while (token == null && retry < 5) {
+            token = await messaging.getAPNSToken();
+            if (token == null) {
+              await Future.delayed(const Duration(milliseconds: 400));
+              retry++;
+            }
+          }
+
+          if (token == null) {
+            debugPrint('[Warning] APNsトークンが未取得のままですが続行します');
+          }
+        }
+
+        // ✅ トピック購読
+        await messaging.subscribeToTopic(topic);
+        state = true;
+        await prefs.setBool(_prefsKey, true);
+
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('通知が許可されていません。端末の設定から有効にしてください。')),
+            const SnackBar(content: Text('通知をONにしました')),
           );
         }
-        return;
+      } else {
+        // トピック購読解除
+        await messaging.unsubscribeFromTopic(topic);
+        state = false;
+        await prefs.setBool(_prefsKey, false);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('通知をOFFにしました')),
+          );
+        }
       }
-
-      // トピック購読
-      await messaging.subscribeToTopic(topic);
-      state = true;
-      await prefs.setBool(_prefsKey, true);
-
+    } catch (e) {
+      debugPrint('⚠️ 通知設定中にエラー: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('通知をONにしました')),
-        );
-      }
-    } else {
-      // トピック解除
-      await messaging.unsubscribeFromTopic(topic);
-      state = false;
-      await prefs.setBool(_prefsKey, false);
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('通知をOFFにしました')),
+          SnackBar(content: Text('通知設定に失敗しました：$e')),
         );
       }
     }
