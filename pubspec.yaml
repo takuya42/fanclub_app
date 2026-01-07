@@ -1,9 +1,9 @@
 name: fanclub_app
-description: A new Flutter project.
+description: Fanclub application
 
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: 'none'
 
-version: 1.0.1+2
+version: 1.0.1+4
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -13,44 +13,72 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+
+  # =========================
+  # Routing / State / UI
+  # =========================
   go_router: ^13.2.5
+  flutter_hooks: ^0.20.5
+  hooks_riverpod: ^2.6.1
+  convex_bottom_bar: ^3.2.0
   table_calendar: ^3.0.9
   intl: ^0.20.2
-  flutter_hooks: ^0.20.5
-  hooks_riverpod: ^2.5.1
-  convex_bottom_bar: ^3.2.0
+  kf_drawer: ^2.0.0
+  flutter_markdown: ^0.7.3
+
+  # =========================
+  # Web / External
+  # =========================
+  url_launcher: ^6.3.0
+  webview_flutter: ^4.10.0
+
+  # =========================
+  # Device / App Info
+  # =========================
+  package_info_plus: ^8.0.0
+  shared_preferences: ^2.5.3
+  csv: ^6.0.0
+
+  # =========================
+  # Firebase
+  # =========================
   firebase_core: ^3.15.2
   firebase_auth: ^5.7.0
   cloud_firestore: ^5.6.12
-  shared_preferences: ^2.2.3
+  firebase_messaging: ^15.2.10
+  firebase_remote_config: ^5.0.0
+
+  # =========================
+  # Auth
+  # =========================
   google_sign_in: ^6.3.0
-  crypto: ^3.0.0
-  kf_drawer: ^2.0.0
-  firebase_messaging: ^15.1.2
-  flutter_local_notifications: ^17.2.1
-  flutter_markdown: ^0.7.3
-  timezone: ^0.9.4
-  url_launcher: ^6.3.0
-  webview_flutter: ^4.7.0
-  qr_flutter: ^4.1.0
-  freezed_annotation: ^2.4.1
-  http: ^1.1.0
-  audioplayers: ^6.0.0
-  csv: ^6.0.0
-  package_info_plus: ^8.0.0
-  firebase_remote_config: ^5.5.0
-  sign_in_with_apple: ^6.1.0
+  sign_in_with_apple: ^6.1.4
+  crypto: ^3.0.6
 
+  # =========================
+  # Notification
+  # =========================
+  flutter_local_notifications: ^17.2.4
 
-
+  # =========================
+  # freezed（必須）
+  # =========================
+  freezed_annotation: ^2.4.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
-  build_runner: ^2.4.8
-  freezed: ^2.5.2
-  flutter_launcher_icons: ^0.14.1
+
+  flutter_lints: ^3.0.2
+
+  # code generation
+  build_runner: ^2.5.4
+  freezed: ^2.5.8
+
+  # =========================
+  # App Icon Generator
+  # =========================
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
@@ -61,7 +89,10 @@ flutter:
     - assets/images/shakilamo_logo.png
     - assets/images/image_stage_plus.png
 
+# =========================
+# App Icon Settings
+# =========================
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/images/image_stage_plus.png"
+  image_path: assets/images/image_stage_plus.png
